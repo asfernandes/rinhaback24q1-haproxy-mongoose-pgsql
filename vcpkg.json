@@ -1,0 +1,46 @@
+{
+  "name": "rinhaback24q1-haproxy-mongoose-pgsql",
+  "version-string": "0.0.1",
+  "dependencies": [
+    {
+      "name": "libpq",
+      "default-features": false
+    },
+    "libpqxx",
+    "mimalloc",
+    {
+      "name": "mongoose",
+      "default-features": false
+    },
+    "task-thread-pool",
+    "yyjson"
+  ],
+  "overrides": [
+    {
+      "name": "libpqxx",
+      "version": "7.8.1",
+      "port-version": 0
+    },
+    {
+      "name": "mimalloc",
+      "version": "2.1.2",
+      "port-version": 1
+    },
+    {
+      "name": "mongoose",
+      "version": "7.13",
+      "port-version": 0
+    },
+    {
+      "name": "task-thread-pool",
+      "version": "1.0.7",
+      "port-version": 0
+    },
+    {
+      "name": "yyjson",
+      "version": "0.8.0",
+      "port-version": 0
+    }
+  ],
+  "builtin-baseline": "37c3e63a1306562f7f59c4c3c8892ddd50fdf992"
+}
