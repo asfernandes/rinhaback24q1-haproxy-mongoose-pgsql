@@ -2,8 +2,10 @@
 #include "./BankService.h"
 #include "./Config.h"
 #include "./Util.h"
+#include <array>
 #include <atomic>
 #include <exception>
+#include <format>
 #include <iostream>
 #include <ostream>
 #include <string>
@@ -35,7 +37,7 @@ namespace rinhaback::api
 		struct Response
 		{
 			int statusCode = 0;
-			char* json = nullptr;
+			std::array<char, 2000> json = {'{', '}', '\0'};
 		};
 
 		if (ev == MG_EV_HTTP_MSG)
@@ -57,38 +59,35 @@ namespace rinhaback::api
 
 				if (response.statusCode == HTTP_STATUS_OK)
 				{
-					const auto docJson = yyjson_mut_doc_new(nullptr);
-					const auto rootJson = yyjson_mut_obj(docJson);
-					yyjson_mut_doc_set_root(docJson, rootJson);
+					auto ptr = response.json.begin();
 
-					const auto saldoJson = yyjson_mut_obj_add_obj(docJson, rootJson, "saldo");
-					yyjson_mut_obj_add_int(docJson, saldoJson, "total", serviceResponse.balance);
-					yyjson_mut_obj_add_int(docJson, saldoJson, "limite", serviceResponse.overdraft);
-					yyjson_mut_obj_add_str(docJson, saldoJson, "data_extrato", serviceResponse.date.c_str());
+					ptr = std::format_to_n(ptr, response.json.end() - ptr,
+						R"({{"saldo":{{"total":{},"data_extrato":"{}","limite":{}}},"ultimas_transacoes":[)",
+						serviceResponse.balance, serviceResponse.date, serviceResponse.overdraft)
+							  .out;
 
-					const auto ultimasTransacoesJson = yyjson_mut_obj_add_arr(docJson, rootJson, "ultimas_transacoes");
+					bool first = true;
 
 					for (const auto& transaction : serviceResponse.lastTransactions)
 					{
-						const auto ultimaTransacaoJson = yyjson_mut_obj(docJson);
-						yyjson_mut_obj_add_int(docJson, ultimaTransacaoJson, "valor", abs(transaction.value));
-						yyjson_mut_obj_add_str(
-							docJson, ultimaTransacaoJson, "tipo", (transaction.value < 0 ? "d" : "c"));
-						yyjson_mut_obj_add_str(
-							docJson, ultimaTransacaoJson, "descricao", transaction.description.c_str());
-						yyjson_mut_obj_add_str(
-							docJson, ultimaTransacaoJson, "realizada_em", transaction.realized_at.c_str());
+						if (first)
+							first = false;
+						else
+							*ptr++ = ',';
 
-						yyjson_mut_arr_append(ultimasTransacoesJson, ultimaTransacaoJson);
+						ptr = std::format_to_n(ptr, response.json.end() - ptr,
+							R"({{"valor":{},"tipo":"{}","descricao":"{}","realizada_em":"{}"}})",
+							abs(transaction.value), (transaction.value < 0 ? 'd' : 'c'), transaction.description,
+							transaction.realized_at)
+								  .out;
 					}
 
-					response.json = yyjson_mut_write(docJson, 0, nullptr);
-					yyjson_mut_doc_free(docJson);
+					*ptr++ = ']';
+					*ptr++ = '}';
+					*ptr = '\0';
 				}
 
-				mg_http_reply(
-					conn, response.statusCode, RESPONSE_HEADERS, "%s", (response.json ? response.json : "{}"));
-				free(response.json);
+				mg_http_reply(conn, response.statusCode, RESPONSE_HEADERS, "%s", response.json.begin());
 			}
 			else if (isPost && mg_match(httpMessage->uri, MG_TRANSACOES_PATH, captures))
 			{
@@ -122,24 +121,20 @@ namespace rinhaback::api
 
 						if (response.statusCode == HTTP_STATUS_OK)
 						{
-							const auto outDocJson = yyjson_mut_doc_new(nullptr);
-							const auto outRootJson = yyjson_mut_obj(outDocJson);
-							yyjson_mut_doc_set_root(outDocJson, outRootJson);
+							auto ptr = response.json.begin();
 
-							yyjson_mut_obj_add_int(outDocJson, outRootJson, "saldo", serviceResponse.balance);
-							yyjson_mut_obj_add_int(outDocJson, outRootJson, "limite", serviceResponse.overdraft);
+							ptr = std::format_to_n(ptr, response.json.end() - ptr, R"({{"saldo":{},"limite":{}}})",
+								serviceResponse.balance, serviceResponse.overdraft)
+									  .out;
 
-							response.json = yyjson_mut_write(outDocJson, 0, nullptr);
-							yyjson_mut_doc_free(outDocJson);
+							*ptr = '\0';
 						}
 					}
 				}
 
 				yyjson_doc_free(inDocJson);
 
-				mg_http_reply(
-					conn, response.statusCode, RESPONSE_HEADERS, "%s", (response.json ? response.json : "{}"));
-				free(response.json);
+				mg_http_reply(conn, response.statusCode, RESPONSE_HEADERS, "%s", response.json.begin());
 			}
 			else
 				mg_http_reply(conn, HTTP_STATUS_INTERNAL_SERVER_ERROR, RESPONSE_HEADERS, "{%m:%m}\n", MG_ESC("error"),
