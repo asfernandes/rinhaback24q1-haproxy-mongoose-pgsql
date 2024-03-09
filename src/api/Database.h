@@ -1,16 +1,11 @@
 #pragma once
 
-#include <condition_variable>
-#include <functional>
-#include <memory>
-#include <mutex>
-#include <stack>
 #include "pqxx/pqxx"
 
 
 namespace rinhaback::api
 {
-	class Connection
+	class DatabaseConnection
 	{
 	public:
 		static constexpr auto POST_TRANSACTION_STMT = "postTransaction";
@@ -18,11 +13,14 @@ namespace rinhaback::api
 		static constexpr auto GET_TRANSACTIONS_STMT = "getTransactions";
 
 	public:
-		explicit Connection();
-		~Connection();
+		explicit DatabaseConnection();
+		~DatabaseConnection();
 
-		Connection(const Connection&) = delete;
-		Connection& operator=(const Connection&) = delete;
+		DatabaseConnection(const DatabaseConnection&) = delete;
+		DatabaseConnection& operator=(const DatabaseConnection&) = delete;
+
+	public:
+		void ping() { }
 
 		auto& getConnection()
 		{
@@ -33,24 +31,5 @@ namespace rinhaback::api
 		pqxx::connection connection;
 	};
 
-	using ConnectionHolder = std::unique_ptr<Connection, std::function<void(Connection*)>>;
-
-	class ConnectionPool
-	{
-	public:
-		explicit ConnectionPool();
-
-		ConnectionPool(const ConnectionPool&) = delete;
-		ConnectionPool& operator=(const ConnectionPool&) = delete;
-
-		ConnectionHolder getConnection();
-
-	private:
-		void releaseConnection(Connection* connection);
-
-	private:
-		std::mutex connectionsMutex;
-		std::condition_variable connectionsCondVar;
-		std::stack<std::unique_ptr<Connection>> connections;
-	};
+	inline thread_local DatabaseConnection databaseConnection;
 }  // namespace rinhaback::api

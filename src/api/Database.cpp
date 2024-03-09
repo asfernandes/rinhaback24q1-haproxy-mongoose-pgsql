@@ -5,7 +5,7 @@
 
 namespace rinhaback::api
 {
-	Connection::Connection()
+	DatabaseConnection::DatabaseConnection()
 	{
 		connection.prepare(POST_TRANSACTION_STMT,
 			R"""(
@@ -29,39 +29,8 @@ namespace rinhaback::api
 			)""");
 	}
 
-	Connection::~Connection()
+	DatabaseConnection::~DatabaseConnection()
 	{
 		connection.close();
-	}
-
-
-	ConnectionPool::ConnectionPool()
-	{
-		for (unsigned i = 0; i < Config::dbWorkers; ++i)
-			connections.emplace(std::make_unique<Connection>());
-	}
-
-	ConnectionHolder ConnectionPool::getConnection()
-	{
-		std::unique_lock lock(connectionsMutex);
-
-		connectionsCondVar.wait(lock, [this] { return !connections.empty(); });
-		assert(!connections.empty());
-
-		auto connection = std::move(connections.top());
-		connections.pop();
-
-		lock.unlock();
-
-		return {connection.release(), [this](auto connection) { releaseConnection(connection); }};
-	}
-
-	void ConnectionPool::releaseConnection(Connection* connection)
-	{
-		std::unique_lock lock(connectionsMutex);
-		connections.emplace(connection);
-
-		lock.unlock();
-		connectionsCondVar.notify_one();
 	}
 }  // namespace rinhaback::api

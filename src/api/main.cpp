@@ -1,6 +1,7 @@
 #include "mimalloc-new-delete.h"
 #include "./BankService.h"
 #include "./Config.h"
+#include "./Database.h"
 #include "./Util.h"
 #include <array>
 #include <atomic>
@@ -159,6 +160,8 @@ namespace rinhaback::api
 			threads.emplace_back(
 				[]
 				{
+					databaseConnection.ping();
+
 					mg_mgr mgr;
 					mg_mgr_init(&mgr);
 					mg_http_listen(&mgr, Config::listenAddress.c_str(), httpHandler, nullptr);

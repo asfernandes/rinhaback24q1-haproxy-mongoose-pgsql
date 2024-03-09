@@ -12,16 +12,13 @@ using std::string_view;
 
 namespace rinhaback::api
 {
-	static ConnectionPool connectionPool;
-
 	int BankService::postTransaction(
 		PostTransactionResponse* response, int accountId, int value, string_view description)
 	{
-		auto connectionHolder = connectionPool.getConnection();
-		auto& connection = connectionHolder->getConnection();
+		auto& connection = databaseConnection.getConnection();
 		pqxx::nontransaction tx{connection};
 
-		const auto result = tx.exec_prepared(Connection::POST_TRANSACTION_STMT, accountId, value, description);
+		const auto result = tx.exec_prepared(DatabaseConnection::POST_TRANSACTION_STMT, accountId, value, description);
 		const auto resultStr = result[0][0].as<pqxx::zview>();
 		pqxx::array_parser array{std::string_view(resultStr.c_str() + 1, resultStr.size() - 2)};
 		const auto status = std::stoi(array.get_next().second);
@@ -40,11 +37,10 @@ namespace rinhaback::api
 
 	int BankService::getStatement(GetStatementResponse* response, int accountId)
 	{
-		auto connectionHolder = connectionPool.getConnection();
-		auto& connection = connectionHolder->getConnection();
+		auto& connection = databaseConnection.getConnection();
 		pqxx::nontransaction tx{connection};
 
-		const auto accountResult = tx.exec_prepared(Connection::GET_ACCOUNT_STMT, accountId);
+		const auto accountResult = tx.exec_prepared(DatabaseConnection::GET_ACCOUNT_STMT, accountId);
 
 		if (accountResult.empty())
 			return HTTP_STATUS_NOT_FOUND;
@@ -56,7 +52,7 @@ namespace rinhaback::api
 		response->overdraft = -overdraft;
 		response->date = getCurrentDateTimeAsString();
 
-		for (const auto transactionResult : tx.exec_prepared(Connection::GET_TRANSACTIONS_STMT, accountId))
+		for (const auto transactionResult : tx.exec_prepared(DatabaseConnection::GET_TRANSACTIONS_STMT, accountId))
 		{
 			const auto value = transactionResult[0].as<int>();
 			const auto description = transactionResult[1].as<pqxx::zview>();
