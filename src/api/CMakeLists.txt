@@ -12,8 +12,6 @@ find_package(mimalloc REQUIRED)
 find_package(unofficial-mongoose REQUIRED)
 find_package(yyjson REQUIRED)
 
-find_path(TASK_THREAD_POOL_INCLUDE_DIRS "task_thread_pool.hpp")
-
 
 foreach(item ${SRC})
 	if(${item} MATCHES ".*\.test\.cpp$" OR ${item} MATCHES ".*main\.cpp$")
@@ -25,11 +23,6 @@ endforeach()
 add_library(${PROJECT_NAME}-lib
 	${SRC}
 	${PROTO_FILES}
-)
-
-target_include_directories(${PROJECT_NAME}-lib
-	PRIVATE
-		${TASK_THREAD_POOL_INCLUDE_DIRS}
 )
 
 target_link_libraries(${PROJECT_NAME}-lib

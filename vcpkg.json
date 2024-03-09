@@ -12,7 +12,6 @@
       "name": "mongoose",
       "default-features": false
     },
-    "task-thread-pool",
     "yyjson"
   ],
   "overrides": [
@@ -29,11 +28,6 @@
     {
       "name": "mongoose",
       "version": "7.13",
-      "port-version": 0
-    },
-    {
-      "name": "task-thread-pool",
-      "version": "1.0.7",
       "port-version": 0
     },
     {
